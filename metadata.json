@@ -1,0 +1,8 @@
+{
+  "name": "Blood Donor BD",
+  "description": "Community blood donor directory, emergency blood requests, live donor map, direct messaging, digital donor ID cards, certificate verification, and Bengali/English blood donation assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

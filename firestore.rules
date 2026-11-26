@@ -1,0 +1,470 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        (request.auth.token.email == 'mdashfaqurrahmantanim@gmail.com' ||
+         request.auth.token.email == 'blooddonorbd025@gmail.com');
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() ||
+        (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isMainAdmin() {
+      return isSuperAdmin() ||
+        (isSignedIn() &&
+         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'main_admin');
+    }
+
+    function isValidUserProfile(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() <= 160 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+        data.userType in ['donor', 'seeker'] &&
+        data.donorEnabled is bool &&
+        data.seekerEnabled is bool &&
+        data.approvalStatus in ['pending', 'approved', 'rejected'] &&
+        data.role in ['user', 'moderator', 'admin', 'main_admin'] &&
+        data.totalDonations is int && data.totalDonations >= 0 && data.totalDonations <= 1000 &&
+        data.totalUnitsDonated is int && data.totalUnitsDonated >= 0 && data.totalUnitsDonated <= 2000 &&
+        data.lastDonationApprovalStatus in ['none', 'pending', 'approved', 'rejected'] &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time &&
+        (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 30)) &&
+        (!('nidNumber' in data) || (data.nidNumber is string && data.nidNumber.size() <= 40)) &&
+        (!('birthday' in data) || (data.birthday is string && data.birthday.size() <= 20)) &&
+        (!('weightKg' in data) || (data.weightKg is int && data.weightKg >= 0 && data.weightKg <= 300)) &&
+        (!('bloodGroup' in data) || (data.bloodGroup is string && data.bloodGroup.size() <= 8)) &&
+        (!('district' in data) || (data.district is string && data.district.size() <= 60)) &&
+        (!('upazila' in data) || (data.upazila is string && data.upazila.size() <= 60)) &&
+        (!('address' in data) || (data.address is string && data.address.size() <= 250)) &&
+        (!('gender' in data) || data.gender in ['male', 'female']) &&
+        (!('profilePic' in data) || (data.profilePic is string && data.profilePic.size() <= 1000)) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 300)) &&
+        (!('lat' in data) || data.lat is number) &&
+        (!('lng' in data) || data.lng is number) &&
+        (!('donorId' in data) || (data.donorId is string && data.donorId.size() <= 32)) &&
+        (!('certificates' in data) || (data.certificates is list && data.certificates.size() <= 50 && (data.certificates.size() == 0 || data.certificates[0] is string))) &&
+        (!('lastDonationDate' in data) || (data.lastDonationDate is string && data.lastDonationDate.size() <= 20)) &&
+        (!('lastDonationUnits' in data) || (data.lastDonationUnits is int && data.lastDonationUnits >= 0 && data.lastDonationUnits <= 10)) &&
+        (!('lastDonationProof' in data) || (data.lastDonationProof is string && data.lastDonationProof.size() <= 1000)) &&
+        (!('lastDonationCode' in data) || (data.lastDonationCode is string && data.lastDonationCode.size() <= 64)) &&
+        (!('lastDonationSubmittedAt' in data) || (data.lastDonationSubmittedAt is timestamp && data.lastDonationSubmittedAt <= request.time));
+    }
+
+    function isValidDonorSummary(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+        data.bloodGroup in ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] &&
+        data.district is string && data.district.size() >= 1 && data.district.size() <= 60 &&
+        data.gender in ['male', 'female'] &&
+        data.approvalStatus in ['pending', 'approved', 'rejected'] &&
+        data.role in ['user', 'moderator', 'admin', 'main_admin'] &&
+        data.totalDonations is int && data.totalDonations >= 0 && data.totalDonations <= 1000 &&
+        data.available is bool &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time &&
+        (!('upazila' in data) || (data.upazila is string && data.upazila.size() <= 60)) &&
+        (!('profilePic' in data) || (data.profilePic is string && data.profilePic.size() <= 1000)) &&
+        (!('donorId' in data) || (data.donorId is string && data.donorId.size() <= 32)) &&
+        (!('lat' in data) || data.lat is number) &&
+        (!('lng' in data) || data.lng is number) &&
+        (!('lastDonationDate' in data) || (data.lastDonationDate is string && data.lastDonationDate.size() <= 20));
+    }
+
+    function isValidBloodRequest(data) {
+      return data.requesterUid is string && data.requesterUid.size() >= 1 && data.requesterUid.size() <= 128 &&
+        data.requesterName is string && data.requesterName.size() >= 1 && data.requesterName.size() <= 100 &&
+        data.patientName is string && data.patientName.size() >= 1 && data.patientName.size() <= 100 &&
+        data.bloodGroup in ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] &&
+        data.unitsNeeded is int && data.unitsNeeded >= 1 && data.unitsNeeded <= 20 &&
+        data.hospitalName is string && data.hospitalName.size() >= 1 && data.hospitalName.size() <= 150 &&
+        data.district is string && data.district.size() >= 1 && data.district.size() <= 60 &&
+        data.contactNumber is string && data.contactNumber.size() >= 6 && data.contactNumber.size() <= 30 &&
+        data.requiredBy is string && data.requiredBy.size() >= 4 && data.requiredBy.size() <= 20 &&
+        data.urgency in ['emergency', 'urgent', 'normal'] &&
+        data.status in ['active', 'fulfilled', 'cancelled'] &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time &&
+        (!('patientAge' in data) || (data.patientAge is int && data.patientAge >= 0 && data.patientAge <= 130)) &&
+        (!('patientGender' in data) || (data.patientGender is string && data.patientGender.size() <= 20)) &&
+        (!('hospitalAddress' in data) || (data.hospitalAddress is string && data.hospitalAddress.size() <= 250)) &&
+        (!('requiredTime' in data) || (data.requiredTime is string && data.requiredTime.size() <= 20)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+        (!('fulfilledAt' in data) || (data.fulfilledAt is timestamp && data.fulfilledAt <= request.time));
+    }
+
+    function isValidConversation(data) {
+      return data.participantIds is list && data.participantIds.size() == 2 &&
+        data.participantIds[0] is string && data.participantIds[1] is string &&
+        data.lastMessage is string && data.lastMessage.size() <= 500 &&
+        data.lastMessageTimestamp is timestamp && data.lastMessageTimestamp <= request.time &&
+        data.unreadCounts is map &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time &&
+        (!('participantNames' in data) || data.participantNames is map) &&
+        (!('participantBloodGroups' in data) || data.participantBloodGroups is map);
+    }
+
+    function isValidDmMessage(data) {
+      return data.senderId is string && data.senderId.size() >= 1 && data.senderId.size() <= 128 &&
+        data.receiverId is string && data.receiverId.size() >= 1 && data.receiverId.size() <= 128 &&
+        data.participantIds is list && data.participantIds.size() == 2 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 2000 &&
+        data.readStatus is bool &&
+        data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidGroupChatMessage(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100 &&
+        data.userRole is string && data.userRole.size() <= 30 &&
+        data.donorEnabled is bool &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 1000 &&
+        data.channel == 'community' &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        (!('bloodGroup' in data) || (data.bloodGroup is string && data.bloodGroup.size() <= 8));
+    }
+
+    function isValidUserPost(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100 &&
+        data.visibility in ['public', 'friends', 'private'] &&
+        data.likesCount is int && data.likesCount >= 0 && data.likesCount <= 1000000 &&
+        data.likedBy is list && data.likedBy.size() <= 500 &&
+        (data.likedBy.size() == 0 || data.likedBy[0] is string) &&
+        data.comments is list && data.comments.size() <= 100 &&
+        (data.comments.size() == 0 || data.comments[0] is map) &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time &&
+        (!('userAvatar' in data) || (data.userAvatar is string && data.userAvatar.size() <= 1000)) &&
+        (!('gender' in data) || (data.gender is string && data.gender.size() <= 20)) &&
+        (!('donorEnabled' in data) || data.donorEnabled is bool) &&
+        (!('bloodGroup' in data) || (data.bloodGroup is string && data.bloodGroup.size() <= 8)) &&
+        (!('district' in data) || (data.district is string && data.district.size() <= 60)) &&
+        (!('text' in data) || (data.text is string && data.text.size() <= 2000)) &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000)) &&
+        (!('poll' in data) || data.poll is map);
+    }
+
+    function isValidSuccessStory(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100 &&
+        data.title is string && data.title.size() >= 3 && data.title.size() <= 150 &&
+        data.story is string && data.story.size() >= 10 && data.story.size() <= 4000 &&
+        data.status == 'published' &&
+        data.likesCount is int && data.likesCount >= 0 && data.likesCount <= 1000000 &&
+        data.likedBy is list && data.likedBy.size() <= 500 &&
+        (data.likedBy.size() == 0 || data.likedBy[0] is string) &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time &&
+        (!('hospitalName' in data) || (data.hospitalName is string && data.hospitalName.size() <= 150)) &&
+        (!('bloodGroup' in data) || (data.bloodGroup is string && data.bloodGroup.size() <= 8));
+    }
+
+    function isValidCertificate(data) {
+      return data.certificateId is string && data.certificateId.size() >= 4 && data.certificateId.size() <= 64 &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100 &&
+        data.donorId is string && data.donorId.size() >= 1 && data.donorId.size() <= 40 &&
+        data.bloodGroup in ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] &&
+        data.issuedBy is string && data.issuedBy.size() >= 1 && data.issuedBy.size() <= 128 &&
+        data.status in ['valid', 'revoked'] &&
+        data.issuedDate is string && data.issuedDate.size() >= 4 && data.issuedDate.size() <= 40 &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        (!('district' in data) || (data.district is string && data.district.size() <= 60));
+    }
+
+    function isValidNotice(data) {
+      return data.title is string && data.title.size() >= 2 && data.title.size() <= 150 &&
+        data.message is string && data.message.size() >= 2 && data.message.size() <= 2000 &&
+        data.priority in ['info', 'normal', 'urgent'] &&
+        data.active is bool &&
+        data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128 &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidReport(data) {
+      return data.reporterUid is string && data.reporterUid.size() >= 1 && data.reporterUid.size() <= 128 &&
+        data.postId is string && data.postId.size() >= 1 && data.postId.size() <= 128 &&
+        data.reason is string && data.reason.size() >= 3 && data.reason.size() <= 500 &&
+        data.status in ['open', 'resolved'] &&
+        data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // 1. Admins registry
+    match /admins/{uid} {
+      allow get: if isSignedIn() && isValidId(uid) && (request.auth.uid == uid || isAdmin());
+      allow list: if isSignedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow create, update: if isMainAdmin() && isValidId(uid) &&
+        incoming().uid == uid &&
+        incoming().email is string && incoming().email.size() <= 160 &&
+        incoming().role in ['main_admin', 'admin', 'moderator'] &&
+        incoming().grantedBy is string && incoming().grantedBy.size() <= 128 &&
+        incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+        incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+      allow delete: if isMainAdmin() && isValidId(uid);
+    }
+
+    // 2. Private user profiles (owner or admin only)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(userId) &&
+        request.auth.uid == userId &&
+        incoming().uid == request.auth.uid &&
+        incoming().role == 'user' &&
+        (incoming().approvalStatus == 'pending' || (incoming().donorEnabled == false && incoming().approvalStatus == 'approved')) &&
+        incoming().totalDonations == 0 &&
+        incoming().totalUnitsDonated == 0 &&
+        incoming().lastDonationApprovalStatus == 'none' &&
+        incoming().keys().hasAll(['uid', 'email', 'fullName', 'userType', 'donorEnabled', 'seekerEnabled', 'approvalStatus', 'role', 'totalDonations', 'totalUnitsDonated', 'lastDonationApprovalStatus', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['uid', 'email', 'fullName', 'phoneNumber', 'nidNumber', 'birthday', 'weightKg', 'userType', 'donorEnabled', 'seekerEnabled', 'bloodGroup', 'district', 'upazila', 'address', 'gender', 'profilePic', 'bio', 'lat', 'lng', 'approvalStatus', 'role', 'donorId', 'certificates', 'totalDonations', 'totalUnitsDonated', 'lastDonationDate', 'lastDonationUnits', 'lastDonationApprovalStatus', 'lastDonationProof', 'lastDonationCode', 'lastDonationSubmittedAt', 'createdAt', 'updatedAt']) &&
+        isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() && isValidId(userId) && isValidUserProfile(incoming()) && (
+        isAdmin() ||
+        (
+          request.auth.uid == userId &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().role == existing().role &&
+          incoming().totalDonations == existing().totalDonations &&
+          incoming().totalUnitsDonated == existing().totalUnitsDonated &&
+          (incoming().approvalStatus == existing().approvalStatus || (incoming().donorEnabled == true && incoming().approvalStatus == 'pending') || (incoming().donorEnabled == false && incoming().approvalStatus == 'approved')) &&
+          (incoming().lastDonationApprovalStatus == existing().lastDonationApprovalStatus || incoming().lastDonationApprovalStatus == 'pending') &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'fullName', 'phoneNumber', 'nidNumber', 'birthday', 'weightKg',
+            'userType', 'donorEnabled', 'seekerEnabled', 'bloodGroup',
+            'district', 'upazila', 'address', 'gender', 'profilePic', 'bio',
+            'lat', 'lng', 'approvalStatus', 'lastDonationDate',
+            'lastDonationUnits', 'lastDonationApprovalStatus',
+            'lastDonationProof', 'lastDonationCode', 'lastDonationSubmittedAt',
+            'updatedAt'
+          ])
+        )
+      );
+
+      allow delete: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+    }
+
+    // 3. Public non-PII donor directory
+    match /donorDirectory/{donorId} {
+      allow get: if isSignedIn() && isValidId(donorId) &&
+        ((resource == null && request.auth.uid == donorId) ||
+         (resource != null && (resource.data.approvalStatus == 'approved' || resource.data.uid == request.auth.uid || isAdmin())));
+      allow list: if isSignedIn() && (resource.data.approvalStatus == 'approved' || isAdmin());
+      allow create: if isSignedIn() && isValidId(donorId) && isValidDonorSummary(incoming()) &&
+        incoming().keys().hasAll(['uid', 'fullName', 'bloodGroup', 'district', 'gender', 'approvalStatus', 'role', 'totalDonations', 'available', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['uid', 'fullName', 'bloodGroup', 'district', 'upazila', 'gender', 'profilePic', 'donorId', 'approvalStatus', 'role', 'lat', 'lng', 'lastDonationDate', 'totalDonations', 'available', 'createdAt', 'updatedAt']) &&
+        (
+          isAdmin() ||
+          (request.auth.uid == donorId && incoming().uid == request.auth.uid && incoming().approvalStatus == 'pending' && incoming().role == 'user' && incoming().totalDonations == 0)
+        );
+      allow update: if isSignedIn() && isValidId(donorId) && isValidDonorSummary(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            request.auth.uid == donorId &&
+            incoming().role == existing().role &&
+            incoming().totalDonations == existing().totalDonations &&
+            (incoming().approvalStatus == existing().approvalStatus || incoming().approvalStatus == 'pending') &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'fullName', 'bloodGroup', 'district', 'upazila', 'gender',
+              'profilePic', 'lat', 'lng', 'lastDonationDate', 'available',
+              'approvalStatus', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(donorId) && (request.auth.uid == donorId || isAdmin());
+    }
+
+    // 4. Blood Requests
+    match /bloodRequests/{requestId} {
+      allow get, list: if isSignedIn() &&
+        (resource.data.status == 'active' || resource.data.requesterUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(requestId) &&
+        incoming().requesterUid == request.auth.uid &&
+        incoming().status == 'active' &&
+        incoming().keys().hasAll(['requesterUid', 'requesterName', 'patientName', 'bloodGroup', 'unitsNeeded', 'hospitalName', 'district', 'contactNumber', 'requiredBy', 'urgency', 'status', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['requesterUid', 'requesterName', 'patientName', 'patientAge', 'patientGender', 'bloodGroup', 'unitsNeeded', 'hospitalName', 'hospitalAddress', 'district', 'contactNumber', 'requiredBy', 'requiredTime', 'urgency', 'status', 'notes', 'createdAt', 'updatedAt', 'fulfilledAt']) &&
+        isValidBloodRequest(incoming());
+      allow update: if isSignedIn() && isValidId(requestId) && isValidBloodRequest(incoming()) &&
+        incoming().requesterUid == existing().requesterUid &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (
+            existing().requesterUid == request.auth.uid &&
+            existing().status == 'active' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'fulfilledAt', 'updatedAt', 'urgency', 'unitsNeeded', 'notes'])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(requestId) && (existing().requesterUid == request.auth.uid || isAdmin());
+    }
+
+    // 5. Private Direct Messages
+    match /privateMessages/{conversationId} {
+      allow get: if isSignedIn() && isValidId(conversationId) &&
+        ((resource == null && conversationId.matches('.*' + request.auth.uid + '.*')) ||
+         (resource != null && request.auth.uid in resource.data.participantIds));
+      allow list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if isSignedIn() && isValidId(conversationId) &&
+        request.auth.uid in incoming().participantIds &&
+        incoming().keys().hasAll(['participantIds', 'lastMessage', 'lastMessageTimestamp', 'unreadCounts', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['participantIds', 'participantNames', 'participantBloodGroups', 'lastMessage', 'lastMessageTimestamp', 'unreadCounts', 'createdAt', 'updatedAt']) &&
+        isValidConversation(incoming());
+      allow update: if isSignedIn() && isValidId(conversationId) &&
+        request.auth.uid in existing().participantIds &&
+        incoming().participantIds == existing().participantIds &&
+        incoming().createdAt == existing().createdAt &&
+        isValidConversation(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['lastMessage', 'lastMessageTimestamp', 'unreadCounts', 'updatedAt']);
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(conversationId) && isValidId(messageId) &&
+          request.auth.uid in resource.data.participantIds;
+        allow list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+        allow create: if isSignedIn() && isValidId(conversationId) && isValidId(messageId) &&
+          exists(/databases/$(database)/documents/privateMessages/$(conversationId)) &&
+          incoming().senderId == request.auth.uid &&
+          request.auth.uid in incoming().participantIds &&
+          incoming().receiverId in incoming().participantIds &&
+          incoming().keys().hasAll(['senderId', 'receiverId', 'participantIds', 'message', 'readStatus', 'createdAt']) &&
+          incoming().keys().hasOnly(['senderId', 'receiverId', 'participantIds', 'message', 'readStatus', 'createdAt']) &&
+          isValidDmMessage(incoming());
+        allow update: if isSignedIn() && isValidId(conversationId) && isValidId(messageId) &&
+          request.auth.uid in existing().participantIds &&
+          isValidDmMessage(incoming()) &&
+          incoming().senderId == existing().senderId &&
+          incoming().receiverId == existing().receiverId &&
+          incoming().participantIds == existing().participantIds &&
+          incoming().message == existing().message &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['readStatus']);
+      }
+    }
+
+    // 6. Community Group Chat
+    match /chatMessages/{messageId} {
+      allow get, list: if isSignedIn() && resource.data.channel == 'community';
+      allow create: if isSignedIn() && isValidId(messageId) &&
+        incoming().userId == request.auth.uid &&
+        incoming().channel == 'community' &&
+        incoming().keys().hasAll(['userId', 'userName', 'userRole', 'donorEnabled', 'message', 'channel', 'createdAt']) &&
+        incoming().keys().hasOnly(['userId', 'userName', 'userRole', 'donorEnabled', 'bloodGroup', 'message', 'channel', 'createdAt']) &&
+        isValidGroupChatMessage(incoming());
+      allow delete: if isSignedIn() && isValidId(messageId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // 7. Community Feed Posts
+    match /userPosts/{postId} {
+      allow get, list: if isSignedIn() &&
+        (resource.data.visibility == 'public' || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(postId) &&
+        incoming().userId == request.auth.uid &&
+        incoming().likesCount == 0 &&
+        incoming().likedBy.size() == 0 &&
+        incoming().keys().hasAll(['userId', 'userName', 'visibility', 'likesCount', 'likedBy', 'comments', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'userName', 'userAvatar', 'gender', 'donorEnabled', 'bloodGroup', 'district', 'text', 'imageUrl', 'visibility', 'likesCount', 'likedBy', 'comments', 'poll', 'createdAt', 'updatedAt']) &&
+        isValidUserPost(incoming());
+      allow update: if isSignedIn() && isValidId(postId) && isValidUserPost(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (existing().userId == request.auth.uid &&
+           incoming().diff(existing()).affectedKeys().hasOnly(['text', 'imageUrl', 'visibility', 'poll', 'updatedAt'])) ||
+          (existing().visibility == 'public' &&
+           incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likedBy', 'comments', 'poll', 'updatedAt']))
+        );
+      allow delete: if isSignedIn() && isValidId(postId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // 8. Success Stories
+    match /successStories/{storyId} {
+      allow get, list: if isSignedIn() && (resource.data.status == 'published' || isAdmin());
+      allow create: if isSignedIn() && isValidId(storyId) &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'published' &&
+        incoming().likesCount == 0 &&
+        incoming().likedBy.size() == 0 &&
+        incoming().keys().hasAll(['userId', 'userName', 'title', 'story', 'status', 'likesCount', 'likedBy', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'userName', 'title', 'story', 'hospitalName', 'bloodGroup', 'status', 'likesCount', 'likedBy', 'createdAt', 'updatedAt']) &&
+        isValidSuccessStory(incoming());
+      allow update: if isSignedIn() && isValidId(storyId) && isValidSuccessStory(incoming()) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        (
+          isAdmin() ||
+          (existing().userId == request.auth.uid &&
+           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'story', 'hospitalName', 'bloodGroup', 'updatedAt'])) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likedBy', 'updatedAt'])
+        );
+      allow delete: if isSignedIn() && isValidId(storyId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // 9. Certificates
+    match /certificates/{certId} {
+      allow get: if isSignedIn() && isValidId(certId) &&
+        (resource == null || resource.data.userId == request.auth.uid || resource.data.status == 'valid' || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create, update: if isAdmin() && isValidId(certId) &&
+        incoming().keys().hasAll(['certificateId', 'userId', 'userName', 'donorId', 'bloodGroup', 'issuedBy', 'status', 'issuedDate', 'createdAt']) &&
+        incoming().keys().hasOnly(['certificateId', 'userId', 'userName', 'donorId', 'bloodGroup', 'district', 'issuedBy', 'status', 'issuedDate', 'createdAt']) &&
+        isValidCertificate(incoming());
+      allow delete: if isAdmin() && isValidId(certId);
+    }
+
+    // 10. Notices
+    match /notices/{noticeId} {
+      allow get, list: if isSignedIn() && (resource.data.active == true || isAdmin());
+      allow create, update: if isAdmin() && isValidId(noticeId) &&
+        incoming().keys().hasAll(['title', 'message', 'priority', 'active', 'createdBy', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['title', 'message', 'priority', 'active', 'createdBy', 'createdAt', 'updatedAt']) &&
+        isValidNotice(incoming());
+      allow delete: if isAdmin() && isValidId(noticeId);
+    }
+
+    // 11. Reports
+    match /reports/{reportId} {
+      allow get, list: if isSignedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(reportId) &&
+        incoming().reporterUid == request.auth.uid &&
+        incoming().status == 'open' &&
+        incoming().keys().hasAll(['reporterUid', 'postId', 'reason', 'status', 'createdAt']) &&
+        incoming().keys().hasOnly(['reporterUid', 'postId', 'reason', 'status', 'createdAt']) &&
+        isValidReport(incoming());
+      allow update, delete: if isAdmin() && isValidId(reportId);
+    }
+  }
+}

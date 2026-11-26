@@ -1,0 +1,296 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted admin/moderator role grant stored by UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["main_admin", "admin", "moderator"] },
+        "grantedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())" }
+      },
+      "required": ["uid", "email", "role", "grantedBy", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private donor/seeker account document containing PII, verification, and donation history.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "nidNumber": { "type": "string" },
+        "birthday": { "type": "string" },
+        "weightKg": { "type": "integer" },
+        "userType": { "type": "string", "enum": ["donor", "seeker"] },
+        "donorEnabled": { "type": "boolean" },
+        "seekerEnabled": { "type": "boolean" },
+        "bloodGroup": { "type": "string" },
+        "district": { "type": "string" },
+        "upazila": { "type": "string" },
+        "address": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "profilePic": { "type": "string" },
+        "bio": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "approvalStatus": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "role": { "type": "string", "enum": ["user", "moderator", "admin", "main_admin"] },
+        "donorId": { "type": "string" },
+        "certificates": { "type": "array" },
+        "totalDonations": { "type": "integer" },
+        "totalUnitsDonated": { "type": "integer" },
+        "lastDonationDate": { "type": "string" },
+        "lastDonationUnits": { "type": "integer" },
+        "lastDonationApprovalStatus": { "type": "string", "enum": ["none", "pending", "approved", "rejected"] },
+        "lastDonationProof": { "type": "string" },
+        "lastDonationCode": { "type": "string" },
+        "lastDonationSubmittedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["uid", "email", "fullName", "userType", "donorEnabled", "seekerEnabled", "approvalStatus", "role", "totalDonations", "totalUnitsDonated", "lastDonationApprovalStatus", "createdAt", "updatedAt"]
+    },
+    "DonorSummary": {
+      "title": "DonorSummary",
+      "description": "Public non-PII donor discovery card for donor directory and live map.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "district": { "type": "string" },
+        "upazila": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "profilePic": { "type": "string" },
+        "donorId": { "type": "string" },
+        "approvalStatus": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "role": { "type": "string", "enum": ["user", "moderator", "admin", "main_admin"] },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "lastDonationDate": { "type": "string" },
+        "totalDonations": { "type": "integer" },
+        "available": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "fullName", "bloodGroup", "district", "gender", "approvalStatus", "role", "totalDonations", "available", "createdAt", "updatedAt"]
+    },
+    "BloodRequest": {
+      "title": "BloodRequest",
+      "description": "Emergency or scheduled blood request.",
+      "type": "object",
+      "properties": {
+        "requesterUid": { "type": "string" },
+        "requesterName": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientAge": { "type": "integer" },
+        "patientGender": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "unitsNeeded": { "type": "integer" },
+        "hospitalName": { "type": "string" },
+        "hospitalAddress": { "type": "string" },
+        "district": { "type": "string" },
+        "contactNumber": { "type": "string" },
+        "requiredBy": { "type": "string" },
+        "requiredTime": { "type": "string" },
+        "urgency": { "type": "string", "enum": ["emergency", "urgent", "normal"] },
+        "status": { "type": "string", "enum": ["active", "fulfilled", "cancelled"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "fulfilledAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requesterUid", "requesterName", "patientName", "bloodGroup", "unitsNeeded", "hospitalName", "district", "contactNumber", "requiredBy", "urgency", "status", "createdAt", "updatedAt"]
+    },
+    "DmConversation": {
+      "title": "DmConversation",
+      "description": "Private 1-on-1 message thread metadata.",
+      "type": "object",
+      "properties": {
+        "participantIds": { "type": "array" },
+        "participantNames": { "type": "object" },
+        "participantBloodGroups": { "type": "object" },
+        "lastMessage": { "type": "string" },
+        "lastMessageTimestamp": { "type": "string", "format": "date-time" },
+        "unreadCounts": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["participantIds", "lastMessage", "lastMessageTimestamp", "unreadCounts", "createdAt", "updatedAt"]
+    },
+    "DmMessage": {
+      "title": "DmMessage",
+      "description": "Individual direct message inside a conversation.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "participantIds": { "type": "array" },
+        "message": { "type": "string" },
+        "readStatus": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "receiverId", "participantIds", "message", "readStatus", "createdAt"]
+    },
+    "GroupChatMessage": {
+      "title": "GroupChatMessage",
+      "description": "Community group chat message.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "donorEnabled": { "type": "boolean" },
+        "bloodGroup": { "type": "string" },
+        "message": { "type": "string" },
+        "channel": { "type": "string", "enum": ["community"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "userRole", "donorEnabled", "message", "channel", "createdAt"]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "Public or personal feed post with optional poll and comments.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "gender": { "type": "string" },
+        "donorEnabled": { "type": "boolean" },
+        "bloodGroup": { "type": "string" },
+        "district": { "type": "string" },
+        "text": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["public", "friends", "private"] },
+        "likesCount": { "type": "integer" },
+        "likedBy": { "type": "array" },
+        "comments": { "type": "array" },
+        "poll": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "visibility", "likesCount", "likedBy", "comments", "createdAt", "updatedAt"]
+    },
+    "SuccessStory": {
+      "title": "SuccessStory",
+      "description": "Donor and recipient life-saving story.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "title": { "type": "string" },
+        "story": { "type": "string" },
+        "hospitalName": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "status": { "type": "string", "enum": ["published"] },
+        "likesCount": { "type": "integer" },
+        "likedBy": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "title", "story", "status", "likesCount", "likedBy", "createdAt", "updatedAt"]
+    },
+    "DonorCertificate": {
+      "title": "DonorCertificate",
+      "description": "Issued blood donor certificate for verification.",
+      "type": "object",
+      "properties": {
+        "certificateId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "donorId": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "district": { "type": "string" },
+        "issuedBy": { "type": "string" },
+        "status": { "type": "string", "enum": ["valid", "revoked"] },
+        "issuedDate": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["certificateId", "userId", "userName", "donorId", "bloodGroup", "issuedBy", "status", "issuedDate", "createdAt"]
+    },
+    "NoticeItem": {
+      "title": "NoticeItem",
+      "description": "Official admin announcement/notice.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "priority": { "type": "string", "enum": ["info", "normal", "urgent"] },
+        "active": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "priority", "active", "createdBy", "createdAt", "updatedAt"]
+    },
+    "PostReport": {
+      "title": "PostReport",
+      "description": "User-submitted moderation report for community posts.",
+      "type": "object",
+      "properties": {
+        "reporterUid": { "type": "string" },
+        "postId": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterUid", "postId", "reason", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Admin and moderator role registry."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account profiles with PII and verification state."
+    },
+    "/donorDirectory/{donorId}": {
+      "schema": { "$ref": "#/entities/DonorSummary" },
+      "description": "Public non-PII approved donor directory entries."
+    },
+    "/bloodRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/BloodRequest" },
+      "description": "Active and historical emergency blood requests."
+    },
+    "/privateMessages/{conversationId}": {
+      "schema": { "$ref": "#/entities/DmConversation" },
+      "description": "Private 1-on-1 direct message conversations."
+    },
+    "/privateMessages/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/DmMessage" },
+      "description": "Messages inside a private 1-on-1 conversation."
+    },
+    "/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/GroupChatMessage" },
+      "description": "Community group chat messages."
+    },
+    "/userPosts/{postId}": {
+      "schema": { "$ref": "#/entities/CommunityPost" },
+      "description": "Community feed and profile posts."
+    },
+    "/successStories/{storyId}": {
+      "schema": { "$ref": "#/entities/SuccessStory" },
+      "description": "Community blood donation success stories."
+    },
+    "/certificates/{certId}": {
+      "schema": { "$ref": "#/entities/DonorCertificate" },
+      "description": "Issued donor certificates."
+    },
+    "/notices/{noticeId}": {
+      "schema": { "$ref": "#/entities/NoticeItem" },
+      "description": "Admin announcements and emergency notices."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/PostReport" },
+      "description": "User reports on community posts."
+    }
+  }
+}
